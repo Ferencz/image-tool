@@ -1,0 +1,16 @@
+{
+  "name": "image-tool",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "image-tool": "./app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-addon-api": "^8.3.0"
+  }
+}
