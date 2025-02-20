@@ -164,7 +164,27 @@ Napi::Value grayscaleImage(const Napi::CallbackInfo& info) {
     }
 }
 
-// Function to compare two images for similarity
+double calculateSimilarity(const cv::Mat& image1, const cv::Mat& image2) {
+    if (image1.size() != image2.size()) {
+        throw std::invalid_argument("Images must have the same size to compare.");
+    }
+
+    cv::Mat diff;
+    cv::absdiff(image1, image2, diff);
+
+    cv::Mat diffSquared;
+    cv::multiply(diff, diff, diffSquared);
+
+    cv::Scalar s = cv::sum(diffSquared);
+    double mse = s[0] + s[1] + s[2];
+
+    double maxMSE = 255.0 * 255.0 * image1.total() * 3;
+
+    double similarityPercentage = 100.0 - (mse / maxMSE * 100.0);
+
+    return similarityPercentage;
+}
+
 Napi::Value compareImages(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
@@ -185,7 +205,6 @@ Napi::Value compareImages(const Napi::CallbackInfo& info) {
             return env.Null();
         }
 
-        // Resize the images to match each other's size (if needed)
         if (image1.size() != image2.size()) {
             if (image1.size().area() < image2.size().area()) {
                 image1 = resizeToMatch(image1, image2);
@@ -194,15 +213,9 @@ Napi::Value compareImages(const Napi::CallbackInfo& info) {
             }
         }
 
-        // Now both images are the same size, so you can safely do operations
-        cv::Mat diff;
-        cv::absdiff(image1, image2, diff);
-        cv::Mat diffSquared;
-        cv::multiply(diff, diff, diffSquared);
-        cv::Scalar s = cv::sum(diffSquared);
-        double mse = s[0] + s[1] + s[2];
+        double similarityPercentage = calculateSimilarity(image1, image2);
 
-        bool areSimilar = (mse == 0);
+        bool areSimilar = (similarityPercentage >= 90.0);
 
         return Napi::Boolean::New(env, areSimilar);
     } catch (const cv::Exception& e) {
@@ -213,6 +226,7 @@ Napi::Value compareImages(const Napi::CallbackInfo& info) {
         return env.Null();
     }
 }
+
 
 
 // Initialize the module
