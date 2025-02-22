@@ -7,6 +7,13 @@
   "bin": {
     "image-tool": "./app.js"
   },
+  "files": [
+    "build/Release/cpp_addon.node",
+    "index.js"
+  ],
+  "binary": {
+    "module_path": "./build/Release/cpp_addon.node"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
