@@ -237,4 +237,4 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     return exports;
 }
 
-NODE_API_MODULE(cpp_addon, Init)
+NODE_API_MODULE(image_api, Init)

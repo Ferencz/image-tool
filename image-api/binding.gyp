@@ -1,8 +1,8 @@
 {
   "targets": [
     {
-      "target_name": "cpp_addon",
-      "sources": [ "cpp_addon.cpp" ],
+      "target_name": "image_api",
+      "sources": [ "app.cpp" ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
         "/usr/include/opencv4"

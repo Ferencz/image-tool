@@ -1,4 +1,4 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const cppAddon = require('./cpp-addon/build/Release/cpp_addon.node');
+const cppAddon = require('./image-api/build/Release/image_api.node');
 export default cppAddon;

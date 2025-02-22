@@ -8,11 +8,11 @@
     "image-tool": "./app.js"
   },
   "files": [
-    "build/Release/cpp_addon.node",
+    "image-api/build/Release/image_api.node",
     "index.js"
   ],
   "binary": {
-    "module_path": "./build/Release/cpp_addon.node"
+    "module_path": "./image-api/build/Release/image_api.node"
   },
   "keywords": [],
   "author": "",
