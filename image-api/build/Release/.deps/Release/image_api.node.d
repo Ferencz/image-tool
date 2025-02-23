@@ -1,0 +1,1 @@
+cmd_Release/image_api.node := ln -f "Release/obj.target/image_api.node" "Release/image_api.node" 2>/dev/null || (rm -rf "Release/image_api.node" && cp -af "Release/obj.target/image_api.node" "Release/image_api.node")
