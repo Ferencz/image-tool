@@ -11,17 +11,32 @@ if (args.length >= 3) {
   if (args[2] === 'grayscale') {
     // Ensure grayscale is used with two arguments (input and output paths)
     if (args.length === 3) {
-      grayscaleImage(inputPath, outputPath);
+      const result = grayscaleImage(inputPath, outputPath);
+      if (result) {
+          console.log('Image converted to grayscale successfully!');
+        } else {
+          console.log('Failed to convert the image to grayscale.');
+        }
     } else {
       console.error("For grayscale, two arguments (input and output paths) are required.");
     }
   } else if (args[2] === 'compare') {
     // Ensure we have exactly 3 arguments (input, second image, 'compare')
     const secondImagePath = args[1];
-    compareImages(inputPath, secondImagePath);
+    const result = compareImages(inputPath, secondImagePath);
+    if (result) {
+      console.log('The images are similar!');
+    } else {
+      console.log('The images are not similar.');
+    }
   } else {
     // Default case: resize image
-    resizeImage(inputPath, outputPath);
+    const result = resizeImage(inputPath, outputPath);
+    if (result) {
+      console.log('Image resized successfully!');
+    } else {
+      console.log('Failed to resize the image.');
+    }
   }
 } else {
   console.log(`
