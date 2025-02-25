@@ -185,6 +185,65 @@ double calculateSimilarity(const cv::Mat& image1, const cv::Mat& image2) {
     return similarityPercentage;
 }
 
+// Helper function to read image either from file path or from buffer
+cv::Mat readImageFromInput(const Napi::Value& input) {
+    if (input.IsString()) {
+        // Image path
+        std::string path = input.As<Napi::String>().Utf8Value();
+        return cv::imread(path, cv::IMREAD_COLOR);
+    } else if (input.IsBuffer()) {
+        // Image buffer
+        std::vector<uchar> buffer(input.As<Napi::Buffer<char>>().Data(),
+                                  input.As<Napi::Buffer<char>>().Data() + input.As<Napi::Buffer<char>>().Length());
+        return cv::imdecode(buffer, cv::IMREAD_COLOR);  // Decode from buffer
+    } else {
+        throw std::invalid_argument("Input must be a string (image path) or buffer (image data)");
+    }
+}
+
+
+// Napi::Value compareImages(const Napi::CallbackInfo& info) {
+//     Napi::Env env = info.Env();
+
+//     try {
+//         if (info.Length() < 2) {
+//             Napi::TypeError::New(env, "Expected two arguments").ThrowAsJavaScriptException();
+//             return env.Null();
+//         }
+
+//         std::string imagePath1 = info[0].As<Napi::String>().Utf8Value();
+//         std::string imagePath2 = info[1].As<Napi::String>().Utf8Value();
+
+//         cv::Mat image1 = readImage(imagePath1);
+//         cv::Mat image2 = readImage(imagePath2);
+
+//         if (image1.empty() || image2.empty()) {
+//             Napi::Error::New(env, "Could not open or find the images").ThrowAsJavaScriptException();
+//             return env.Null();
+//         }
+
+//         if (image1.size() != image2.size()) {
+//             if (image1.size().area() < image2.size().area()) {
+//                 image1 = resizeToMatch(image1, image2);
+//             } else {
+//                 image2 = resizeToMatch(image2, image1);
+//             }
+//         }
+
+//         double similarityPercentage = calculateSimilarity(image1, image2);
+
+//         bool areSimilar = (similarityPercentage >= 90.0);
+
+//         return Napi::Boolean::New(env, areSimilar);
+//     } catch (const cv::Exception& e) {
+//         Napi::Error::New(env, e.what()).ThrowAsJavaScriptException();
+//         return env.Null();
+//     } catch (const std::exception& e) {
+//         Napi::Error::New(env, e.what()).ThrowAsJavaScriptException();
+//         return env.Null();
+//     }
+// }
+
 Napi::Value compareImages(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
@@ -194,17 +253,27 @@ Napi::Value compareImages(const Napi::CallbackInfo& info) {
             return env.Null();
         }
 
-        std::string imagePath1 = info[0].As<Napi::String>().Utf8Value();
-        std::string imagePath2 = info[1].As<Napi::String>().Utf8Value();
-
-        cv::Mat image1 = readImage(imagePath1);
-        cv::Mat image2 = readImage(imagePath2);
+        // Read the images based on the input (path or buffer)
+        cv::Mat image1 = readImageFromInput(info[0]);
+        cv::Mat image2 = readImageFromInput(info[1]);
 
         if (image1.empty() || image2.empty()) {
             Napi::Error::New(env, "Could not open or find the images").ThrowAsJavaScriptException();
             return env.Null();
         }
 
+        // Ensure both images have the same number of channels
+        if (image1.channels() != image2.channels()) {
+            // Convert both images to the same number of channels (e.g., 3 channels - color)
+            if (image1.channels() == 1) {
+                cv::cvtColor(image1, image1, cv::COLOR_GRAY2BGR);  // Convert grayscale to color
+            }
+            if (image2.channels() == 1) {
+                cv::cvtColor(image2, image2, cv::COLOR_GRAY2BGR);  // Convert grayscale to color
+            }
+        }
+
+        // Resize images to match if their sizes don't match
         if (image1.size() != image2.size()) {
             if (image1.size().area() < image2.size().area()) {
                 image1 = resizeToMatch(image1, image2);
@@ -213,6 +282,7 @@ Napi::Value compareImages(const Napi::CallbackInfo& info) {
             }
         }
 
+        // Calculate similarity
         double similarityPercentage = calculateSimilarity(image1, image2);
 
         bool areSimilar = (similarityPercentage >= 90.0);

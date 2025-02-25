@@ -24,6 +24,7 @@ if (args.length >= 3) {
     // Ensure we have exactly 3 arguments (input, second image, 'compare')
     const secondImagePath = args[1];
     const result = compareImages(inputPath, secondImagePath);
+    console.log(result)
     if (result) {
       console.log('The images are similar!');
     } else {
