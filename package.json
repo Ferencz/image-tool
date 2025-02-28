@@ -9,7 +9,8 @@
   },
   "files": [
     "image-api/build/Release/image_api.node",
-    "index.js"
+    "index.js",
+    "loadAddon.js"
   ],
   "binary": {
     "module_path": "./image-api/build/Release/image_api.node"
