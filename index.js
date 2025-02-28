@@ -1,7 +1,7 @@
 import cppAddon from './loadAddon.js';
 
-export function resizeImage(inputPath, outputPath) {
-  return cppAddon.resizeImage(inputPath, outputPath);
+export function resizeImage(inputPath, outputPath, zoom) {
+  return cppAddon.resizeImage(inputPath, outputPath, zoom);
 }
 
 export function grayscaleImage(inputPath, outputPath) {

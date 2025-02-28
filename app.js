@@ -4,7 +4,7 @@ import { resizeImage, grayscaleImage, compareImages } from './index.js';
 
 const args = process.argv.slice(2);
 
-if (args.length >= 3) {
+if (args.length >= 2) {
   const inputPath = args[0];
   const outputPath = args[1];
 
@@ -31,10 +31,10 @@ if (args.length >= 3) {
       console.log('The images are not similar.');
     }
   } else {
-    // Default case: resize image
-    const result = resizeImage(inputPath, outputPath);
+    const zoom = args[2] || '2'
+    const result = resizeImage(inputPath, outputPath, zoom);
     if (result) {
-      console.log('Image resized successfully!');
+      console.log('Image resized successfully!', zoom, 'times');
     } else {
       console.log('Failed to resize the image.');
     }
@@ -45,7 +45,7 @@ Usage: image-tool <inputPath> <outputPath|secondImagePath> [grayscale|compare]
 
 Available Commands:
   1. **Resize an image** (default):
-     Usage: image-tool <inputPath> <outputPath>
+     Usage: image-tool <inputPath> <outputPath> [n]
      - Resizes the input image and saves it to the output path.
 
   2. **Convert image to grayscale**:

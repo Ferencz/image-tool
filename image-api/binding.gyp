@@ -13,7 +13,9 @@
         "/usr/lib/x86_64-linux-gnu/libopencv_highgui.so",
         "/usr/lib/x86_64-linux-gnu/libopencv_imgcodecs.so",
         "/usr/lib/x86_64-linux-gnu/libwebp.so",
-        "/usr/lib/x86_64-linux-gnu/libopencv_videoio.so"
+        "/usr/lib/x86_64-linux-gnu/libopencv_videoio.so",
+        "`pkg-config --libs opencv4 --static`",
+        "`pkg-config --libs opencv_contrib --static`"
       ],
       "cflags": [ "-frtti", "-std=c++17" ],
       "cflags_cc": [ "-frtti", "-std=c++17" ],

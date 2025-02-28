@@ -1,13 +1,20 @@
+#include <iostream>
+#include <map>
 #include <napi.h>
+#include <opencv2/quality.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-#include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 
-// Base64 decoding function
+double calculateSSIM(const cv::Mat& img1, const cv::Mat& img2) {
+    cv::Mat ssim_map;
+    cv::Scalar mssim = cv::quality::QualitySSIM::compute(img1, img2, ssim_map);
+    return mssim[0];
+}
+
 std::string base64Decode(const std::string &in) {
     std::string out;
     std::vector<int> T(256, -1);
@@ -26,14 +33,12 @@ std::string base64Decode(const std::string &in) {
     return out;
 }
 
-// Function to decode base64 to cv::Mat
 cv::Mat decodeBase64ToMat(const std::string& base64Str) {
     std::string decodedData = base64Decode(base64Str);
     std::vector<uchar> data(decodedData.begin(), decodedData.end());
     return cv::imdecode(data, cv::IMREAD_COLOR);
 }
 
-// Function to read an image from a file or base64 string
 cv::Mat readImage(const std::string& imagePath) {
     if (imagePath.substr(0, 5) == "data:") {
         std::string base64Str = imagePath.substr(imagePath.find(",") + 1);
@@ -43,20 +48,25 @@ cv::Mat readImage(const std::string& imagePath) {
     }
 }
 
-// Function to check if a file extension is supported by OpenCV
 bool isSupportedExtension(const std::string& extension) {
     static const std::vector<std::string> supportedExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp" };
     return std::find(supportedExtensions.begin(), supportedExtensions.end(), extension) != supportedExtensions.end();
 }
 
-// Helper function to get the file extension
+cv::Mat readImageBuffer(const std::vector<uchar>& imageBuffer) {
+    cv::Mat img = cv::imdecode(imageBuffer, cv::IMREAD_COLOR);
+    if (img.empty()) {
+        throw std::runtime_error("Failed to decode image from buffer.");
+    }
+    return img;
+}
+
 std::string getFileExtension(const std::string& filePath) {
     size_t dotPos = filePath.find_last_of(".");
     if (dotPos == std::string::npos) return "";
     return filePath.substr(dotPos);
 }
 
-// Helper function to resize the larger image to match the size of the smaller image
 cv::Mat resizeToMatch(const cv::Mat& image, const cv::Mat& targetImage) {
     cv::Mat resizedImage;
     if (image.size() != targetImage.size()) {
@@ -67,60 +77,78 @@ cv::Mat resizeToMatch(const cv::Mat& image, const cv::Mat& targetImage) {
     return resizedImage;
 }
 
+cv::Mat convertToGrayscale(const cv::Mat& img) {
+    cv::Mat grayImage;
+    cv::cvtColor(img, grayImage, cv::COLOR_BGR2GRAY);
+    return grayImage;
+}
+
 Napi::Value resizeImage(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
-
     try {
         if (info.Length() < 2) {
-            Napi::TypeError::New(env, "Expected two arguments").ThrowAsJavaScriptException();
+            Napi::TypeError::New(env, "Expected at least two arguments").ThrowAsJavaScriptException();
             return env.Null();
         }
 
-        std::string inputPath = info[0].As<Napi::String>().Utf8Value();
+        cv::Mat image;
+        if (info[0].IsBuffer()) {
+            Napi::Buffer<unsigned char> buffer = info[0].As<Napi::Buffer<unsigned char>>(); // Corrected line
+            std::vector<unsigned char> imageData(buffer.Data(), buffer.Data() + buffer.Length());
+            image = readImageBuffer(imageData);
+        } else if (info[0].IsString()) {
+            std::string path = info[0].As<Napi::String>().Utf8Value();
+            image = readImage(path);
+        } else {
+            Napi::Error::New(env, "Input must be a string (image path) or buffer (image data)").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
         std::string outputPath = info[1].As<Napi::String>().Utf8Value();
 
-        // Get the file extension for output image
-        std::string extension = getFileExtension(outputPath);
+        int zoom = 2;
 
-        // Check if the extension is empty or not supported, use .png as a fallback
-        if (extension.empty() || !isSupportedExtension(extension)) {
-            extension = ".png";  // Default to .png if extension is invalid or missing
-            outputPath += extension;  // Add default extension
+        if (info.Length() > 2 && info[2].IsNumber()) {
+            zoom = info[2].As<Napi::Number>().Int32Value();
         }
 
-        // Validate the final extension after ensuring it's valid
-        if (!isSupportedExtension(extension)) {
-            Napi::Error::New(env, "Unsupported file extension: " + extension).ThrowAsJavaScriptException();
-            return env.Null();
-        }
-
-        cv::Mat image = readImage(inputPath);
         if (image.empty()) {
             Napi::Error::New(env, "Could not open or find the image").ThrowAsJavaScriptException();
             return env.Null();
         }
 
-        // Resize the image
         cv::Mat resizedImage;
-        cv::resize(image, resizedImage, cv::Size(image.cols / 2, image.rows / 2));
+        cv::resize(image, resizedImage, cv::Size(image.cols / zoom, image.rows / zoom));
 
-        // Try saving the resized image
+
+        std::string extension = getFileExtension(outputPath);
+        if (extension.empty() || !isSupportedExtension(extension)) {
+            extension = ".png";
+            outputPath += extension;
+        }
+
+        if (!isSupportedExtension(extension)) {
+            Napi::Error::New(env, "Unsupported file extension: " + extension).ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
         if (!cv::imwrite(outputPath, resizedImage)) {
             Napi::Error::New(env, "Could not save the resized image").ThrowAsJavaScriptException();
             return env.Null();
         }
-
         return Napi::Boolean::New(env, true);
+
     } catch (const cv::Exception& e) {
+        std::cerr << "OpenCV Exception caught: " << e.what() << std::endl;
         Napi::Error::New(env, e.what()).ThrowAsJavaScriptException();
         return env.Null();
     } catch (const std::exception& e) {
+        std::cerr << "Standard Exception caught: " << e.what() << std::endl;
         Napi::Error::New(env, e.what()).ThrowAsJavaScriptException();
         return env.Null();
     }
 }
 
-// Function to convert image to grayscale
 Napi::Value grayscaleImage(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
@@ -129,8 +157,19 @@ Napi::Value grayscaleImage(const Napi::CallbackInfo& info) {
             Napi::TypeError::New(env, "Expected two arguments").ThrowAsJavaScriptException();
             return env.Null();
         }
-
-        std::string inputPath = info[0].As<Napi::String>().Utf8Value();
+        cv::Mat image;
+        if (info[0].IsBuffer()) {
+            // Extract buffer and convert to vector
+            Napi::Buffer<char> buffer = info[0].As<Napi::Buffer<char>>();
+            std::vector<unsigned char> imageData(buffer.Data(), buffer.Data() + buffer.Length());
+            image = readImageBuffer(imageData);  // Pass vector to readImageBuffer
+        } else if (info[0].IsString()) {
+            std::string path = info[0].As<Napi::String>().Utf8Value();
+            image = readImage(path);  // Use readImage function for path
+        } else {
+            Napi::Error::New(env, "Input must be a string (image path) or buffer (image data)").ThrowAsJavaScriptException();
+            return env.Null();
+        }
         std::string outputPath = info[1].As<Napi::String>().Utf8Value();
 
         std::string extension = getFileExtension(outputPath);
@@ -139,16 +178,12 @@ Napi::Value grayscaleImage(const Napi::CallbackInfo& info) {
             return env.Null();
         }
 
-        cv::Mat image = readImage(inputPath);
         if (image.empty()) {
             Napi::Error::New(env, "Could not open or find the image").ThrowAsJavaScriptException();
             return env.Null();
         }
+        cv::Mat grayImage = convertToGrayscale(image);
 
-        cv::Mat grayImage;
-        cv::cvtColor(image, grayImage, cv::COLOR_BGR2GRAY);
-
-        // Check if saving the image works
         if (!cv::imwrite(outputPath, grayImage)) {
             Napi::Error::New(env, "Could not save the grayscale image").ThrowAsJavaScriptException();
             return env.Null();
@@ -164,130 +199,71 @@ Napi::Value grayscaleImage(const Napi::CallbackInfo& info) {
     }
 }
 
-double calculateSimilarity(const cv::Mat& image1, const cv::Mat& image2) {
-    if (image1.size() != image2.size()) {
-        throw std::invalid_argument("Images must have the same size to compare.");
-    }
-
-    cv::Mat diff;
-    cv::absdiff(image1, image2, diff);
-
-    cv::Mat diffSquared;
-    cv::multiply(diff, diff, diffSquared);
-
-    cv::Scalar s = cv::sum(diffSquared);
-    double mse = s[0] + s[1] + s[2];
-
-    double maxMSE = 255.0 * 255.0 * image1.total() * 3;
-
-    double similarityPercentage = 100.0 - (mse / maxMSE * 100.0);
-
-    return similarityPercentage;
-}
-
-// Helper function to read image either from file path or from buffer
-cv::Mat readImageFromInput(const Napi::Value& input) {
-    if (input.IsString()) {
-        // Image path
-        std::string path = input.As<Napi::String>().Utf8Value();
-        return cv::imread(path, cv::IMREAD_COLOR);
-    } else if (input.IsBuffer()) {
-        // Image buffer
-        std::vector<uchar> buffer(input.As<Napi::Buffer<char>>().Data(),
-                                  input.As<Napi::Buffer<char>>().Data() + input.As<Napi::Buffer<char>>().Length());
-        return cv::imdecode(buffer, cv::IMREAD_COLOR);  // Decode from buffer
-    } else {
-        throw std::invalid_argument("Input must be a string (image path) or buffer (image data)");
-    }
-}
-
-
-// Napi::Value compareImages(const Napi::CallbackInfo& info) {
-//     Napi::Env env = info.Env();
-
-//     try {
-//         if (info.Length() < 2) {
-//             Napi::TypeError::New(env, "Expected two arguments").ThrowAsJavaScriptException();
-//             return env.Null();
-//         }
-
-//         std::string imagePath1 = info[0].As<Napi::String>().Utf8Value();
-//         std::string imagePath2 = info[1].As<Napi::String>().Utf8Value();
-
-//         cv::Mat image1 = readImage(imagePath1);
-//         cv::Mat image2 = readImage(imagePath2);
-
-//         if (image1.empty() || image2.empty()) {
-//             Napi::Error::New(env, "Could not open or find the images").ThrowAsJavaScriptException();
-//             return env.Null();
-//         }
-
-//         if (image1.size() != image2.size()) {
-//             if (image1.size().area() < image2.size().area()) {
-//                 image1 = resizeToMatch(image1, image2);
-//             } else {
-//                 image2 = resizeToMatch(image2, image1);
-//             }
-//         }
-
-//         double similarityPercentage = calculateSimilarity(image1, image2);
-
-//         bool areSimilar = (similarityPercentage >= 90.0);
-
-//         return Napi::Boolean::New(env, areSimilar);
-//     } catch (const cv::Exception& e) {
-//         Napi::Error::New(env, e.what()).ThrowAsJavaScriptException();
-//         return env.Null();
-//     } catch (const std::exception& e) {
-//         Napi::Error::New(env, e.what()).ThrowAsJavaScriptException();
-//         return env.Null();
-//     }
-// }
-
 Napi::Value compareImages(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
-
     try {
         if (info.Length() < 2) {
-            Napi::TypeError::New(env, "Expected two arguments").ThrowAsJavaScriptException();
+            Napi::TypeError::New(env, "Expected two arguments: image 1 and image 2").ThrowAsJavaScriptException();
             return env.Null();
         }
 
-        // Read the images based on the input (path or buffer)
-        cv::Mat image1 = readImageFromInput(info[0]);
-        cv::Mat image2 = readImageFromInput(info[1]);
+        cv::Mat image1;
+        cv::Mat image2;
+
+        if (info[0].IsBuffer()) {
+            Napi::Buffer<unsigned char> buffer = info[0].As<Napi::Buffer<unsigned char>>(); // Corrected buffer type
+            std::vector<unsigned char> imageData(buffer.Data(), buffer.Data() + buffer.Length());
+            image1 = readImageBuffer(imageData);
+        } else if (info[0].IsString()) {
+            std::string path = info[0].As<Napi::String>().Utf8Value();
+            image1 = readImage(path);
+        } else {
+            Napi::Error::New(env, "Input must be a string (image path) or buffer (image data)").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (info[1].IsBuffer()) {
+            Napi::Buffer<unsigned char> buffer = info[1].As<Napi::Buffer<unsigned char>>(); // Corrected buffer type
+            std::vector<unsigned char> imageData(buffer.Data(), buffer.Data() + buffer.Length());
+            image2 = readImageBuffer(imageData);
+        } else if (info[1].IsString()) {
+            std::string path = info[1].As<Napi::String>().Utf8Value();
+            image2 = readImage(path);
+        } else {
+            Napi::Error::New(env, "Input must be a string (image path) or buffer (image data)").ThrowAsJavaScriptException();
+            return env.Null();
+        }
 
         if (image1.empty() || image2.empty()) {
             Napi::Error::New(env, "Could not open or find the images").ThrowAsJavaScriptException();
             return env.Null();
         }
 
-        // Ensure both images have the same number of channels
-        if (image1.channels() != image2.channels()) {
-            // Convert both images to the same number of channels (e.g., 3 channels - color)
-            if (image1.channels() == 1) {
-                cv::cvtColor(image1, image1, cv::COLOR_GRAY2BGR);  // Convert grayscale to color
-            }
-            if (image2.channels() == 1) {
-                cv::cvtColor(image2, image2, cv::COLOR_GRAY2BGR);  // Convert grayscale to color
-            }
+        // Resize the larger image to the size of the smaller image
+        if (image1.size().area() > image2.size().area()) {
+            cv::resize(image1, image1, image2.size());
+        } else if (image2.size().area() > image1.size().area()) {
+            cv::resize(image2, image2, image1.size());
         }
 
-        // Resize images to match if their sizes don't match
-        if (image1.size() != image2.size()) {
-            if (image1.size().area() < image2.size().area()) {
-                image1 = resizeToMatch(image1, image2);
-            } else {
-                image2 = resizeToMatch(image2, image1);
-            }
+        cv::Mat grayImage1 = convertToGrayscale(image1);
+        cv::Mat grayImage2 = convertToGrayscale(image2);
+
+        double grayscaleSSIM = calculateSSIM(grayImage1, grayImage2);
+
+        double colorSSIM = 0.0;
+        if (image1.channels() == 3 && image2.channels() == 3) {
+            colorSSIM = calculateSSIM(image1, image2);
         }
 
-        // Calculate similarity
-        double similarityPercentage = calculateSimilarity(image1, image2);
+        double averageSSIM = (grayscaleSSIM + colorSSIM) / 2.0;
 
-        bool areSimilar = (similarityPercentage >= 90.0);
+        Napi::Object result = Napi::Object::New(env);
+        result.Set("grayscaleComparison", Napi::Number::New(env, grayscaleSSIM));
+        result.Set("colorComparison", Napi::Number::New(env, colorSSIM));
+        result.Set("averageComparison", Napi::Number::New(env, averageSSIM));
 
-        return Napi::Boolean::New(env, areSimilar);
+        return result;
     } catch (const cv::Exception& e) {
         Napi::Error::New(env, e.what()).ThrowAsJavaScriptException();
         return env.Null();
@@ -298,8 +274,6 @@ Napi::Value compareImages(const Napi::CallbackInfo& info) {
 }
 
 
-
-// Initialize the module
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "resizeImage"), Napi::Function::New(env, resizeImage));
     exports.Set(Napi::String::New(env, "grayscaleImage"), Napi::Function::New(env, grayscaleImage));
