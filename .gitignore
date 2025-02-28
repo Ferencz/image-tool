@@ -1,5 +1,6 @@
 node_modules
-tests
+tests/*
+
 !tests/test.sh
 !tests/testImage.png
 !tests/secondTestImage.png
