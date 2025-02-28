@@ -25,7 +25,7 @@ if (args.length >= 2) {
     const secondImagePath = args[1];
     const result = compareImages(inputPath, secondImagePath);
     console.log(result)
-    if (result) {
+    if (result.averageComparison > 0.9) {
       console.log('The images are similar!');
     } else {
       console.log('The images are not similar.');
@@ -46,7 +46,7 @@ Usage: image-tool <inputPath> <outputPath|secondImagePath> [grayscale|compare]
 Available Commands:
   1. **Resize an image** (default):
      Usage: image-tool <inputPath> <outputPath> [n]
-     - Resizes the input image and saves it to the output path.
+     - Resizes by n number of times default = 2 the input image and saves it to the output path.
 
   2. **Convert image to grayscale**:
      Usage: image-tool <inputPath> <outputPath> grayscale

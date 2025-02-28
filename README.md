@@ -57,8 +57,8 @@ Usage: image-tool <inputPath> <outputPath|secondImagePath> [grayscale|compare]
 
 Available Commands:
   1. **Resize an image** (default):
-     Usage: image-tool <inputPath> <outputPath>
-     - Resizes the input image and saves it to the output path.
+     Usage: image-tool <inputPath> <outputPath> [n]
+     - Resizes by n number of times default = 2 the input image and saves it to the output path.
 
   2. **Convert image to grayscale**:
      Usage: image-tool <inputPath> <outputPath> grayscale
@@ -117,6 +117,66 @@ If you need to modify the build configuration, update the `binding.gyp` file and
 
 ```bash
 ./build.sh
+```
+
+### Testing the library
+Write your own tests in the `package.json` 
+```json
+{
+   ...
+   "scripts": {
+     "test": "echo \"Run all tests\" && ./tests/test.sh",
+     ...
+     "test:newtest": "...."
+   }
+}
+```
+and update the `tests/test.sh` to include the new test `npm run test:newtest`
+
+```bash
+npm run test
+
+> image-tool@1.0.0 test
+> echo "Run all tests" && ./tests/test.sh
+
+Run all tests
+=============
+
+> image-tool@1.0.0 test:rescale
+> node app.js tests/testImage.png tests/testImagesmaller-x2.png
+
+Image resized successfully! 2 times
+===================================
+
+> image-tool@1.0.0 test:rescale3
+> node app.js tests/testImage.png tests/testImagesmaller-x3.png 3
+
+Image resized successfully! 3 times
+===================================
+
+> image-tool@1.0.0 test:grayscale
+> node app.js tests/secondTestImage.png tests/secondTestImage-gray.png grayscale
+
+Image converted to grayscale successfully!
+==========================================
+
+> image-tool@1.0.0 test:compare
+> node app.js tests/testImage.png tests/testImagesmaller-x2.png compare
+
+{ grayscaleComparison: 1, colorComparison: 1, averageComparison: 1 }
+The images are similar!
+=======================
+
+> image-tool@1.0.0 test:comparef
+> node app.js tests/secondTestImage.png tests/testImage.png compare
+
+{
+  grayscaleComparison: 0.11160479048459677,
+  colorComparison: 0.08439103955461331,
+  averageComparison: 0.09799791501960504
+}
+The images are not similar.
+===========================
 ```
 
 ### Contributions

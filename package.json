@@ -15,9 +15,17 @@
     "module_path": "./image-api/build/Release/image_api.node"
   },
   "keywords": [],
-  "author": "",
+  "author": "Ferencz",
   "license": "ISC",
   "dependencies": {
     "node-addon-api": "^8.3.0"
+  },
+  "scripts": {
+    "test": "echo \"Run all tests\" && ./tests/test.sh",
+    "test:rescale": "node app.js tests/testImage.png tests/testImagesmaller-x2.png",
+    "test:rescale3": "node app.js tests/testImage.png tests/testImagesmaller-x3.png 3",
+    "test:grayscale": "node app.js tests/secondTestImage.png tests/secondTestImage-gray.png grayscale",
+    "test:compare": "node app.js tests/testImage.png tests/testImagesmaller-x2.png compare",
+    "test:comparef": "node app.js tests/secondTestImage.png tests/testImage.png compare"
   }
 }
