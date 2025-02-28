@@ -1,6 +1,6 @@
 import cppAddon from './loadAddon.js';
 
-export function resizeImage(inputPath, outputPath, zoom) {
+export function resizeImage(inputPath, outputPath, zoom='2') {
   return cppAddon.resizeImage(inputPath, outputPath, zoom);
 }
 
