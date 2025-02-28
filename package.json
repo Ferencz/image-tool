@@ -14,7 +14,7 @@
   "binary": {
     "module_path": "./image-api/build/Release/image_api.node"
   },
-  "keywords": [],
+  "keywords": ["image", "tool", "compare", "grayscale"],
   "author": "Ferencz",
   "license": "ISC",
   "dependencies": {
