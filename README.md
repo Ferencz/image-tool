@@ -79,7 +79,7 @@ Example usage:
 You can also use this package as a module in a Node.js project that uses ES6 modules.
 
 1. **Install the Package:**
-   If the package is published to npm, you can install it using:
+   If the package once it is published to npm registry, you can install it using:
    ```bash
    npm install image-tool
    ```
