@@ -1,2 +1,4 @@
-build
+build/*
+!build/
+!build/Release/*
 !build/Release/image_api.node
